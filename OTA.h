@@ -17,6 +17,8 @@ WiFiClient telnetClient;
 #endif
 
 #if defined(ESP32_RTOS) && defined(ESP32)
+TaskHandle_t OTATaskHandle;  //Handle for OTA
+
 void ota_handle(void* parameter) {
   for (;;) {
     if ((WiFi.status() == WL_CONNECTED)) {
@@ -113,13 +115,16 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   DEBUG.print("IP address: ");
   DEBUG.println(WiFi.localIP());
 
+//#if defined(ESP32_RTOS) && defined(ESP32)
 #if defined(ESP32_RTOS) && defined(ESP32)
-  xTaskCreate(
-    ota_handle,   /* Task function. */
-    "OTA_HANDLE", /* String with name of task. */
-    10000,        /* Stack size in bytes. */
-    NULL,         /* Parameter passed as input of the task */
-    1,            /* Priority of the task. */
-    NULL);        /* Task handle. */
+  xTaskCreatePinnedToCore(
+    ota_handle,         /* Task function. */
+    "OTA_HANDLE",       /* String with name of task. */
+    2048,              /* Stock assigned for task in words - 4 bytes for 32 bits processors */
+    NULL,               /* Parameter passed as input of the task */
+    1,                  /* Priority of the task. */
+    &OTATaskHandle,     /* Task handle. */
+    0                   /* ESP32 core for task separate from core 1 used for arduino tasks */
+  );
 #endif
 }
