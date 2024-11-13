@@ -49,6 +49,14 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   // Wait for connection
   Serial.print(F("Waiting for WiFi connection to "));
   Serial.println(ssid);
+#if defined OLED
+  delay(2000);
+  display.clearDisplay();
+  display.setCursor(0, 8);
+  display.print("Trying ");
+  display.println(ssid);
+  display.display();
+#endif
   //  while (WiFi.status() != WL_CONNECTED) {
   for (int i = 0; (i < 20) && (WiFi.status() != WL_CONNECTED); i++) {
     //  while (WiFi.status() != WL_CONNECTED) {
@@ -57,11 +65,24 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   }
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println(F("\nWiFi failed to connect!!!"));
+#if defined OLED
+    display.println("Failed");
+    display.display();
+#endif
     delay(2000);
     ESP.restart();
   }
   Serial.print(F("\nWifi connected "));
-  Serial.println(WiFi.localIP());
+  Serial.print(WiFi.localIP());
+#if defined OLED
+  display.clearDisplay();
+  display.setCursor(0, TEXTFIRSTROW);
+  display.print("Connected to ");
+  display.println(ssid);
+  display.print("IP: ");
+  display.println(WiFi.localIP());
+  display.display();
+#endif
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232); // Use 8266 port if you are working in Sloeber IDE, it is fixed there and not adjustable
 
@@ -120,7 +141,7 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   xTaskCreatePinnedToCore(
     ota_handle,         /* Task function. */
     "OTA_HANDLE",       /* String with name of task. */
-    2048,              /* Stock assigned for task in words - 4 bytes for 32 bits processors */
+    4096,              /* Stock assigned for task in words - 4 bytes for 32 bits processors */
     NULL,               /* Parameter passed as input of the task */
     1,                  /* Priority of the task. */
     &OTATaskHandle,     /* Task handle. */

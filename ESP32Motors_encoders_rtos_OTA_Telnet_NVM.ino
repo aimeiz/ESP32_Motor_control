@@ -1,29 +1,46 @@
 //Works on board WEMOS D1 R32
-#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_241112"
+#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_241113"
 #include <Arduino.h>
 #include <Preferences.h>  //For Non Volatile Memory to store preferences.
 #define ESP32_RTOS        // Uncomment this line if you want to use the code with freertos only on the ESP32
 // Has to be done before including "OTA.h"
 //OTA & Telnet statements
+#define OLED
 #define TELNET
+#if defined OLED
+#define OLED_RESET -1
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define TEXTFIRSTROW 4 
+#include <spi.h>
+#include <wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <fonts/Picopixel.h>        // Font Picopixel
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+//Adafruit_SSD1306 display(OLED_RESET);
+#endif
+//I2C SCL 22  
+//I2C SDA 21
 #include "OTA.h"
 #include <credentials.h>
 #define OTAPASSWORD "robot1"
 //const char* otapassword = "robot1";
 uint32_t entry;
 //*********************
-
 // Pin definitions
-//Jtag pins 26 25 33 35
+//Jtag pins 12 13 14 15
+//I2C SCL 22  
+//I2C SDA 21
 const int leftMotorPWM = 26;            // GPIO for Left Motor PWM
 const int rightMotorPWM = 33;           // GPIO for Right Motor PWM
-const int leftMotorDIR = 12;            // GPIO for Left Motor DIR
+const int leftMotorDIR = 2;            // GPIO for Left Motor DIR
 const int rightMotorDIR = 27;           // GPIO for Right Motor DIR
 const int leftPot = 34;                 // GPIO for Left Potentiometer
 const int rightPot = 35;                // GPIO for Right Potentiometer
 const int leftEncoder = 32;             // GPIO for Left Encoder
 const int rightEncoder = 25;            // GPIO for Right Encoder
-const int equalSpeed = 21;              // GPIO for right speed = left speed adjusted by left speed potentiometer
+const int equalSpeed = 19;              // GPIO for right speed = left speed adjusted by left speed potentiometer
 const int batteryPin = 36;              //ADC Port for battery voltage measurement
 const float batteryDivider = 0.003587;  //Resistor divider for battery measurements
 const float batteryMin = 6.5;           //Minimal battery voltage. Below motors stop
@@ -70,11 +87,11 @@ float batteryVoltage = 0;  //Stores battery voltage
 TaskHandle_t MotorControlTaskHandle;  //Handle for MotorControlTask
 TaskHandle_t CommunicationTaskHandle;  //Handle for MotorControlTask
 //Interrupts handlers for optical encoders
-void IRAM_ATTR leftEncoderISR() {
+static void IRAM_ATTR leftEncoderISR() {
   leftEncoderCount++;
 }
 
-void IRAM_ATTR rightEncoderISR() {
+static void IRAM_ATTR rightEncoderISR() {
   rightEncoderCount++;
 }
 
@@ -472,6 +489,16 @@ void orders() {
 //****************************SETUP***********************************************************//
 void setup() {
   Serial.begin(115200);
+#if defined OLED
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+  display.setFont(&Picopixel);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, TEXTFIRSTROW);
+  display.println(VERSION);
+  display.display();
+#endif
   Serial.println(F(VERSION));
   preferences.begin("pidPreferences", false);  // Namespace
   // Load PID parameters
