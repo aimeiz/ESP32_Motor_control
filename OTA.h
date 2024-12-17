@@ -53,7 +53,7 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   delay(2000);
   display.clearDisplay();
   display.setCursor(0, 8);
-  display.print("Trying ");
+  display.print(F("Trying "));
   display.println(ssid);
   display.display();
 #endif
@@ -66,7 +66,7 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println(F("\nWiFi failed to connect!!!"));
 #if defined OLED
-    display.println("Failed");
+    display.println(F("Failed"));
     display.display();
 #endif
     delay(2000);
@@ -77,7 +77,7 @@ void setupOTA(const char* nameprefix, const char* ssid, const char* password, co
 #if defined OLED
   display.clearDisplay();
   display.setCursor(0, TEXTFIRSTROW);
-  display.print("Connected to ");
+  display.print(F("Connected to "));
   display.println(ssid);
   display.print("IP: ");
   display.println(WiFi.localIP());
