@@ -1,0 +1,384 @@
+//<!--
+const char webpage[] PROGMEM = R"rawliteral(
+ -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=0.5, user-scalable=0">
+    <title>ESP32 System Status</title>
+    <style>
+        body {
+            font-family: monospace;
+            background-color: #121212;
+            color: #00ff00;
+            width: 100%x;
+            max-width: 420px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            /*            align-items: center; */
+            height: 100vh;
+        }
+
+        .container {
+            border: 1px solid #00ff00; /* Same border style as table */
+            padding: 5px; /* Add padding for inner content */
+            margin: 1px auto; /* Center and add spacing around container */
+            width: 100%; /* Adjust width to be responsive */
+            max-width: 440px; /* Match table's max width */
+            background-color: #121212; /* Optional: Same background color as body */
+            color: #00ff00;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 420px; /* Table fits within small screens */
+            margin: auto;
+            color: #00ff00;
+        }
+
+        th, td {
+       /*     border: 1px solid #00ff00; *//* Surrounding border for the table */
+            padding: 10px;
+            vertical-align: middle; /* Ensures content aligns properly */
+        }
+
+        .row-divider {
+            border-top: 1px solid #00ff00;
+        }
+
+        .yellow-label {
+            color: yellow;
+            text-align: left; /* Ensure labels align left */
+        }
+
+        .blue-label {
+            color: cyan;
+            text-align: left;
+        }
+
+        .green-label {
+            color: green;
+            text-align: left;
+        }
+
+        .yellow-value, .white-value {
+            color: white;
+            text-align: right; /* Values align to the right */
+        }
+
+        .red-value {
+            color: red;
+            text-align: right;
+        }
+
+    /*#status-table {
+    border: 1px solid #00ff00;
+    border-collapse: collapse;
+    width: 100%;
+    max-width: 420px;
+    margin-top: 0px;
+    color: #00ff00;
+    }
+
+    #status-table td, #status-table th {
+    width: 25%;*/ /* Każda kolumna zajmuje równą część tabeli */
+    /*}
+
+    #status-table td:first-child {
+    width: 10%;*/ /* Pierwsza kolumna jest szersza */
+    /*}
+
+    th, td {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 3px;
+    padding-top: 3px;
+    padding-bottom: 3px;*/
+    /*		padding: 10px;*/
+    /*		padding: 5px 5px; */ /* Zmniejszony padding wewnętrzny komórek */
+    /*text-align: Left;
+    white-space: nowrap;*/ /* Zapobieganie zawijaniu tekstu */
+    /*}*/
+
+    /*		th {
+    text-align: center;
+    font-weight: bold;
+    } */
+    /*tr td:first-child {
+    padding-right: 10px;*/ /* Odstęp między główną etykietą a podetykietami */
+    /*}
+
+    td span {
+    margin-left: 2px;*/ /* Zmniejszony odstęp między tekstem i wartością */
+    /*}
+
+    .yellow-label {
+    color: yellow;
+    }
+
+    .blue-label {
+    color: cyan;
+    }
+
+    .green-label {
+    color: green;
+    }
+
+    .yellow-value, .white-value {
+    color: white;
+    }
+
+    .red-value {
+    color: red;
+    }
+
+    .row-divider {
+    border-top: 1px solid #00ff00;
+    }
+
+    .row-divider td {
+    border-top: 1px solid #00ff00;
+    padding-top: 10px;*/ /* Zmniejszony odstęp od góry */
+    /*padding-bottom: 10px;*/ /* Zmniejszony odstęp od góry */
+    /*}*/
+
+    .header {
+    text-align: center;
+    font-weight: bold;
+    color: orange;
+    /*			padding-bottom: 0; */
+    /*          padding: 10px 0;  */
+    margin: 10px;
+    }
+
+    .menu {
+    margin-top: 20px;
+    width: 398px;
+    max-width: 398px;
+    border: 1px solid #00ff00;
+    padding: 10px;
+    background-color: #121212;
+    color: yellow;
+    }
+
+    #command-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    width: 398px;
+    max-width: 398px;
+    border: 1px solid #00ff00;
+    padding: 10px;
+    }
+
+    #command-input {
+    flex: 1;
+    padding: 5px;
+    font-size: 16px;
+    border: 1px solid #00ff00;
+    background-color: #121212;
+    color: yellow;
+    margin-right: 10px;
+    }
+
+    #command-send {
+    padding: 5px 10px;
+    font-size: 16px;
+    border: 1px solid #00ff00;
+    background-color: #121212;
+    color: yellow;
+    cursor: pointer;
+    }
+
+    #command-send:hover {
+    background-color: #00ff00;
+    color: #121212;
+    }
+    </style>
+    <script>
+        let socket;
+        async function initializeWebSocket() {
+            try {
+                // Fetch the WebSocket port from the server
+                ////const response = await fetch('/getWebSocketPort');
+                ////const websocketPort = await response.text();
+
+                // Construct the WebSocket address
+                ////const wsAddress = "ws://" + window.location.hostname + ":" + websocketPort + "/ws";
+                //This is just to test page directly from browser
+                const wsAddress = "ws://192.168.1.32:83/ws";
+                const websocketPort = "83";
+                socket = new WebSocket(wsAddress);
+
+                // Attach event listeners to the WebSocket
+                socket.onopen = () => console.log("WebSocket connected to port " + websocketPort);
+                socket.onmessage = (event) => {
+                    console.log("Message received:", event.data);
+                    // Handle incoming WebSocket messages here
+                    const data = JSON.parse(event.data);
+                    updateTable(data);
+                };
+                socket.onclose = () => console.log("WebSocket disconnected");
+                socket.onerror = (error) => console.error("WebSocket error:", error);
+            } catch (error) {
+                console.error("Error initializing WebSocket:", error);
+            }
+            document.getElementById("command-send").onclick = sendCommand;
+            document.getElementById("command-input").onkeypress = function (e) {
+                if (e.key === "Enter") {
+                    sendCommand();
+                }
+            };
+        }
+
+        window.onload = initializeWebSocket;
+
+
+        function updateTable(data) {
+            document.getElementById('tgtLeftSpeed').innerText = data.targetLeftSpeed;
+            document.getElementById('leftSpeed').innerText = data.speedLeft;
+            document.getElementById('leftPwm').innerText = data.leftMotorPwm;
+            document.getElementById('leftDir').innerText = data.leftMotorDirection === "FWD" ? "FWD" : "REV";
+            document.getElementById('leftWay').innerText = data.leftWay;
+
+            document.getElementById('tgtRightSpeed').innerText = data.targetRightSpeed;
+            document.getElementById('rightSpeed').innerText = data.speedRight;
+            document.getElementById('rightPwm').innerText = data.rightMotorPwm;
+            document.getElementById('rightDir').innerText = data.rightMotorDirection === "FWD" ? "FWD" : "REV";
+            document.getElementById('rightWay').innerText = data.rightWay;
+
+            document.getElementById('kp').innerText = data.kp;
+            document.getElementById('ki').innerText = data.ki;
+            document.getElementById('kd').innerText = data.kd;
+
+            const batteryElem = document.getElementById('battery');
+            batteryElem.innerText = `${data.batteryVoltage} V`;
+            if (data.batteryVoltage > data.batteryLow) {
+                batteryElem.className = "yellow-value";
+            } else {
+                batteryElem.className = "red-value";
+            }
+        }
+
+        function sendCommand() {
+            const command = document.getElementById("command-input").value.trim();
+            if (command && socket.readyState === WebSocket.OPEN) {
+                socket.send(command);
+                document.getElementById("command-input").value = ""; // Clear the input field
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 class="header">SYSTEM STATUS TABLE</h1>
+        <table id="status-table" style="width: 100%; max-width: 420px; border: 1px solid #00ff00;">
+            <tr class="row-divider">
+                <td class="yellow-label" rowspan="2" style="text-align: left;">Left<br>Motor</td>
+                <td class="yellow-label" style="text-align: left;">tgtSpeed:</td>
+                <td class="yellow-value" id="tgtLeftSpeed" style="text-align: right; width: 60px;">0000</td>
+                <td class="yellow-label" style="text-align: left;">Pwm:</td>
+                <td class="yellow-value" id="leftPwm" style="text-align: right; width: 40px;">000</td>
+                <td class="yellow-label" style="text-align: left;">Dir:</td>
+                <td class="yellow-value" id="leftDir" style="text-align: right;">FWD</td>
+            </tr>
+            <tr>
+                <td class="yellow-label" style="text-align: left;">Speed:</td>
+                <td class="yellow-value" id="leftSpeed" style="text-align: right; width: 60px;">0000</td>
+                <td class="yellow-label" style="text-align: left;">Way:</td>
+                <td colspan="3" class="yellow-value" id="leftWay" style="text-align: right;">000000000</td>
+            </tr>
+            <tr class="row-divider">
+                <td class="blue-label" rowspan="2" style="text-align: left;">Right<br>Motor</td>
+                <td class="blue-label" style="text-align: left;">tgtSpeed:</td>
+                <td class="white-value" id="tgtRightSpeed" style="text-align: right; width: 60px;">0000</td>
+                <td class="blue-label" style="text-align: left;">Pwm:</td>
+                <td class="white-value" id="rightPwm" style="text-align: right; width: 40px;">000</td>
+                <td class="blue-label" style="text-align: left;">Dir:</td>
+                <td class="white-value" id="rightDir" style="text-align: right;">FWD</td>
+            </tr>
+            <tr>
+                <td class="blue-label" style="text-align: left;">Speed:</td>
+                <td class="white-value" id="rightSpeed" style="text-align: right; width: 60px;">0000</td>
+                <td class="blue-label" style="text-align: left;">Way:</td>
+                <td colspan="3" class="white-value" id="rightWay" style="text-align: right;">000000000</td>
+            </tr>
+            <tr class="row-divider">
+                <td class="green-label" style="text-align: left;">PID</td>
+                <td class="green-label" style="text-align: left;">Kp:</td>
+                <td class="white-value" id="kp" style="text-align: right; width: 60px;">0.000</td>
+                <td class="green-label" style="text-align: left;">Ki:</td>
+                <td class="white-value" id="ki" style="text-align: right; width: 60px;">0.000</td>
+                <td class="green-label" style="text-align: left;">Kd:</td>
+                <td class="white-value" id="kd" style="text-align: right; width: 60px;">0.000</td>
+            </tr>
+            <tr class="row-divider">
+                <td class="yellow-label" style="text-align: left;">Battery</td>
+                <td colspan="2" class="yellow-label" style="text-align: left;">Vbat:</td>
+                <td colspan="4" id="battery" class="yellow-value" style="text-align: right;">00.00 V</td>
+            </tr>
+        </table>
+        <!--
+            <table id="status-table">
+                <tr class="row-divider">
+                    <td class="yellow-label">Left</td>
+                    <td class="yellow-label">tgtSpeed: <span id="tgtLeftSpeed" class="yellow-value"></span></td>
+                    <td class="yellow-label">Pwm: <span id="leftPwm" class="yellow-value"></span></td>
+                    <td class="yellow-label">Dir: <span id="leftDir" class="yellow-value"></span></td>
+                </tr>
+                <tr>
+                    <td class="yellow-label">Motor</td>
+                    <td class="yellow-label">Speed: <span id="leftSpeed" class="yellow-value"></span></td>
+                    <td class="yellow-label">Way: <span id="leftWay" class="yellow-value"></span></td>
+                    <td></td>
+                </tr>
+                <tr class="row-divider">
+                    <td class="blue-label">Right</td>
+                    <td class="blue-label">tgtSpeed: <span id="tgtRightSpeed" class="white-value"></span></td>
+                    <td class="blue-label">Pwm: <span id="rightPwm" class="white-value"></span></td>
+                    <td class="blue-label">Dir: <span id="rightDir" class="white-value"></span></td>
+                </tr>
+                <tr>
+                    <td class="blue-label">Motor</td>
+                    <td class="blue-label">Speed: <span id="rightSpeed" class="white-value"></span></td>
+                    <td class="blue-label">Way: <span id="rightWay" class="white-value"></span></td>
+                    <td></td>
+                </tr>
+                <tr class="row-divider">
+                    <td class="green-label">PID</td>
+                    <td class="green-label">Kp: <span id="kp" class="white-value"></span></td>
+                    <td class="green-label">Ki: <span id="ki" class="white-value"></span></td>
+                    <td class="green-label">Kd: <span id="kd" class="white-value"></span></td>
+                </tr>
+                <tr class="row-divider">
+                    <td class="yellow-label">Battery</td>
+                    <td colspan="3" class="yellow-label">Vbat: <span id="battery"></span></td>
+                </tr>
+            </table>
+    -->
+        <div class="menu">
+            <strong>Robot Commands:</strong><br>
+            [F]ORWARD &lt;speed&gt; &lt;distance&gt;<br>
+            [B]ACKWARD &lt;speed&gt; &lt;distance&gt;<br>
+            [S]TOP<br>
+            [D]ISPLAY<br>
+            [E]NCODERS<br>
+            [M]ENU - print menu<br>
+            [P]ID &lt;kp&gt; &lt;ki&gt; &lt;kd&gt; - Enter PID factors<br>
+            P[O]T &lt;0/1&gt; - Potentiometers speeds control Off / On<br>
+            P[I]DON &lt;0/1&gt; - PID regulation Off / On<br>
+        </div>
+
+        <div id="command-container">
+            <input type="text" id="command-input" placeholder="Enter command...">
+            <button id="command-send">Send</button>
+        </div>
+    </div>
+</body>
+</html>
+//<!--
+)rawliteral";
+//-->

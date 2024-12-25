@@ -18,11 +18,20 @@
     <ClInclude Include="__vm\.ESP32Motors_encoders_rtos_OTA_Telnet_NVM.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OTA.h">
+    <ClInclude Include="static_table.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="static_table_TelnetStream2.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="web_table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ESP32Motors_encoders_rtos_OTA_Telnet_NVM.ino" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="WebPage.html" />
   </ItemGroup>
 </Project>
