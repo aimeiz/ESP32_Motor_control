@@ -27,11 +27,17 @@
     <ClInclude Include="web_table.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="OutputHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ESP32Motors_encoders_rtos_OTA_Telnet_NVM.ino" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="WebPage.html" />
+    <None Include="webPage.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="board.txt" />
   </ItemGroup>
 </Project>

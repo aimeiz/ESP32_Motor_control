@@ -1,11 +1,30 @@
 #pragma once
 
 #include"WebPage.html"
+extern String ordersResponse;
 void websocketsUpdateDynamicValues() {
     // Create a JSON string to represent the data
     String json = "{";
+    //responses
+    if (!ordersResponse.isEmpty()) {
+        // Ucieczka znaków specjalnych w ordersResponse
+        ordersResponse.replace("\"", "\\\"");
+        ordersResponse.replace("\n", "\\n");
+        ordersResponse.replace("\r", "\\r");
 
-    // Left Motor values
+        // Dodanie odpowiedzi do JSON-a
+        json += "\"ordersResponse\":\"" + ordersResponse + "\",";
+    }
+    else {
+        // Dodanie pustej wartoœci, jeœli brak odpowiedzi
+        json += "\"ordersResponse\":\"\",";
+    }
+    ordersResponse = "";
+        // Left Motor values
+    json += "\"targetSpeed\":" + String(targetSpeed) + ",";
+    json += "\"direction\":" + String(direction) + ",";
+    json += "\"turn\":" + String(turn) + ",";
+    json += "\"stopped\":" + String(stopped) + ",";
     json += "\"targetLeftSpeed\":" + String(targetLeftSpeed) + ",";
     json += "\"leftMotorPwm\":" + String(leftMotorDirection == FORWARD ? leftMotorPwm : 255 - leftMotorPwm) + ",";
     json += "\"leftMotorDirection\":\"" + String(leftMotorDirection == FORWARD ? "FWD" : "REV") + "\",";
@@ -30,14 +49,15 @@ void websocketsUpdateDynamicValues() {
     json += "\"errRight\":" + String(errorRight) + ",";
     json += "\"intRight\":" + String(integralRight) + ",";
     json += "\"derRight\":" + String(derivativeRight) + ",";
-    json += "\"otaHostname\":\"" + String(OTA_HOSTNAME) + "\",";
 
     // Battery values
     json += "\"batteryVoltage\":" + String(batteryVoltage, 2) + ",";
-    json += "\"batteryStatus\":\"" + String(batteryVoltage > batteryLow ? "Normal" : "Low") + "\"";
+    json += "\"batteryStatus\":\"" + String(batteryVoltage > batteryLow ? "Normal" : "Low") + "\",";
     //json += "\"batteryLow\":" + String(batteryLow);
+    json += "\"otaHostname\":\"" + String(OTA_HOSTNAME) + "\"";
     json += "}";
 
     // Broadcast the JSON string to all connected WebSocket clients
+    //Serial.println(json);
     webSocket.broadcastTXT(json);
 }

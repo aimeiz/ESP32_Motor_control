@@ -1,0 +1,4 @@
+# ESP32Motors_encoders_rtos_OTA_Telnet_NVM build property overrides
+#
+tools.esp_ota.upload.field.password=robot1
+

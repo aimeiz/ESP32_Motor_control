@@ -1,5 +1,5 @@
 
-void displayStaticTable() {
+void displayStaticTableTelnetstream() {
 	//if (!printToTelnet) return;
 	TelnetStream2.print(F("\033[2J"));  // Clears screen
 	TelnetStream2.print(F("\033[H"));   // Move cursor to start
@@ -39,7 +39,7 @@ void displayStaticTable() {
 	TelnetStream2.flush();
 }
 
-void updateDynamicValues() {
+void updateDynamicValuesTelnetStream() {
 	//if (!printToTelnet) return;
 	// Left Motor - values
 	TelnetStream2.print(F("\033[4;28H"));  // Row 4, column 28
@@ -87,3 +87,5 @@ void updateDynamicValues() {
 	TelnetStream2.print(F("> "));          // Command cursor
 	TelnetStream2.flush();
 }
+
+const String logHeader PROGMEM = "Time\t"

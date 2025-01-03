@@ -1,4 +1,4 @@
-//void displayTelnet() {
+//void displayTelnet() { // Table for non ANSI terminal
 //	telnetClient.print(F("tgtLtSpeed: "));
 //	telnetClient.print(targetLeftSpeed);
 //	telnetClient.print(F("\tLtPwm: "));
@@ -41,7 +41,7 @@
 //	telnetClient.print(F("\r\n"));
 //}
 
-//bool displayPaused = false;  // Zmienna kontrolująca wyświetlanie tabeli
+//bool displayPaused = false;  // table display control variable
 
 void displayStaticTable() {
 	//if (!printToTelnet) return;

@@ -4,6 +4,8 @@ VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ESP32Motors_encoders_rtos_OTA_Telnet_NVM", "ESP32Motors_encoders_rtos_OTA_Telnet_NVM.vcxproj", "{C5F80730-F44F-4478-BDAE-6634EFC2CA88}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "esp32_serial_debug_exercise", "..\..\esp32_serial_debug_exercise\esp32_serial_debug_exercise\esp32_serial_debug_exercise.vcxproj", "{FC59BF75-0528-4883-AE98-5BADAE84CBE7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -16,6 +18,12 @@ Global
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.ActiveCfg = Release|ARM
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.Build.0 = Release|ARM
 		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.Deploy.0 = Release|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Debug|ARM.ActiveCfg = Debug|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Debug|ARM.Build.0 = Debug|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Debug|ARM.Deploy.0 = Debug|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Release|ARM.ActiveCfg = Release|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Release|ARM.Build.0 = Release|ARM
+		{FC59BF75-0528-4883-AE98-5BADAE84CBE7}.Release|ARM.Deploy.0 = Release|ARM
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
