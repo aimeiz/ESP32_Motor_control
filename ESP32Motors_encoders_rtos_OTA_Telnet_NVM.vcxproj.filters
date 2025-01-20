@@ -36,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="webPage.html" />
+    <None Include="webPage — browser.html" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="board.txt" />

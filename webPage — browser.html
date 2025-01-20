@@ -1,4 +1,3 @@
-const char webpage[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
@@ -102,6 +101,17 @@ const char webpage[] PROGMEM = R"rawliteral(
             color: yellow;
         }
 
+        #toggle-menu {
+            margin: 10px 0;
+            padding: 5px 10px;
+            font-size: 16px;
+            border: 1px solid #00ff00;
+            background-color: #121212;
+            color: yellow;
+            cursor: pointer;
+        }
+
+        Wynik:
         #command-container {
             display: flex;
             flex-direction: column; /*Elements placed vertically */
@@ -158,6 +168,82 @@ const char webpage[] PROGMEM = R"rawliteral(
             /*align-items:first baseline;*/ /* Vertical alignment to the top */
             justify-content: center; /* Optional horizontal alignment */
         }
+
+        #menu-container {
+            margin-bottom: 10px;
+        }
+
+        #menu {
+            position: relative;
+            border: 1px solid #00ff00;
+            padding: 5px 10px;
+            background-color: #121212;
+            color: yellow;
+            transition: height 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        #menu-content {
+            margin-top: 10px;
+            transition: opacity 0.3s ease;
+        }
+
+        #menu.hidden #menu-content {
+            opacity: 0; /* Ukrycie zawartoœci z efektem wygaszenia */
+            pointer-events: none; /* Zablokowanie interakcji */
+            height: 0; /* Wyeliminowanie wysokoœci */
+            display: none; /* Ca³kowite ukrycie */
+        }
+
+        #toggle-menu {
+            font-size: 12px; /* Dopasowanie rozmiaru czcionki */
+            border: none;
+            background: none;
+            color: yellow;
+            cursor: pointer;
+            padding: 0; /* Usuñ dodatkowe odstêpy */
+            margin: 0; /* Usuñ marginesy */
+            display: flex;
+            align-items: center;
+        }
+
+
+        #sliders {
+            display: flex;
+            justify-content: space-between;
+            margin: 1px 0;
+            padding: 1px;
+    /*        border: 1px solid #00ff00; */
+            background-color: #121212;
+            color: #00ff00;
+        }
+
+            #sliders div {
+                flex: 1;
+                text-align: center;
+            }
+
+        #control-buttons {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+            #control-buttons button {
+                padding: 5px 10px;
+                margin-bottom: 10px;
+                font-size: 14px;
+                border: 1px solid #00ff00;
+                background-color: #121212;
+                color: yellow;
+                cursor: pointer;
+            }
+
+                #control-buttons button:hover {
+                    background-color: #00ff00;
+                    color: #121212;
+                }
+
     </style>
     <script>
         let socket;
@@ -165,12 +251,16 @@ const char webpage[] PROGMEM = R"rawliteral(
             try {
                 // Fetch the WebSocket port from the server
                 const response = await fetch('/getWebSocketPort');
-                const websocketPort = await response.text();
+                let websocketPort = await response.text();
                 // Construct the WebSocket address
-                const wsAddress = "ws://" + window.location.hostname + ":" + websocketPort + "/ws";
+                let wsAddress = "ws://" + window.location.hostname + ":" + websocketPort + "/ws";
+				} catch (error) {
+				console.error("Unable to get websockets port# from server. Using 83",error)
                 //This is just to test page directly from browser
-                ////const wsAddress = "ws://192.168.1.57:83/ws";
-                ////const websocketPort = "83";
+                wsAddress = "ws://192.168.1.82:83/ws";				
+                websocketPort = "83";
+				}
+			try{
                 socket = new WebSocket(wsAddress);
 
                 // Attach event listeners to the WebSocket
@@ -214,9 +304,9 @@ const char webpage[] PROGMEM = R"rawliteral(
 
             //document.getElementById('ordersResponse').innerText = data.ordersResponse;
             document.getElementById('tgtSpeed').innerText = data.targetSpeed;
-            document.getElementById('direction').innerText = data.direction;
+            document.getElementById('direction').innerText = data.direction === 0 ? "FWD" : "BCK";
             document.getElementById('turn').innerText = data.turn;
-            document.getElementById('stopped').innerText = data.stopped;
+            //document.getElementById('stopped').innerText = data.stopped;
             document.getElementById('tgtLeftSpeed').innerText = data.targetLeftSpeed;
             document.getElementById('leftSpeed').innerText = data.speedLeft;
             document.getElementById('leftPwm').innerText = data.leftMotorPwm;
@@ -259,15 +349,63 @@ const char webpage[] PROGMEM = R"rawliteral(
                 batteryElem.className = "red-value";
                 batteryUnitElem.className = "red-label"; // Match the "V" color with the value
             }
+            // Aktualizacja suwaków
+            document.getElementById('targetSpeed-slider').value = data.targetSpeed;
+            document.getElementById('targetSpeed-value').innerText = data.targetSpeed;
+
+            document.getElementById('turn-slider').value = data.turn;
+            document.getElementById('turn-value').innerText = data.turn;
         }
 
-        function sendCommand() {
-            const command = document.getElementById("command-input").value.trim();
-            if (command && socket.readyState === WebSocket.OPEN) {
-                socket.send(command);
-                document.getElementById("command-input").value = ""; // Clear the input field
+        // Funkcja chowania/rozwijania menu
+        function toggleMenu() {
+            const menuContent = document.getElementById("menu-content");
+            const isHidden = menuContent.style.display === "none";
+
+            if (isHidden) {
+                menuContent.style.display = "block";
+                menuContent.style.opacity = "1";
+            } else {
+                menuContent.style.opacity = "0";
+                setTimeout(() => {
+                    menuContent.style.display = "none";
+                }, 300); // Po 300ms, gdy efekt wygaszenia siê zakoñczy
             }
         }
+
+        // Obs³uga suwaka targetSpeed
+        function updateTargetSpeed(value) {
+            document.getElementById("targetSpeed-value").innerText = value; // Aktualizujemy wyœwietlan¹ wartoœæ
+            const command = `SPEED ${value}`;
+            sendCommand(command, false); 
+        }
+
+        // Obs³uga suwaka turn
+        function updateTurn(value) {
+            document.getElementById("turn-value").innerText = value;
+            const command = `TURN ${value}`;
+            sendCommand(command, false);
+        }
+
+        // Przyciski Forward, Backward, Stop
+        function sendControlCommand(action) {
+            const command = action;
+            sendCommand(command, false);
+        }
+
+        // Modyfikacja funkcji sendCommand
+        function sendCommand(command, fromInput = true) {
+            if (fromInput) {
+                const inputField = document.getElementById("command-input");
+                command = inputField.value.trim();
+                inputField.value = ""; // Wyczyœæ pole tekstowe
+            }
+
+            if (command && socket.readyState === WebSocket.OPEN) {
+                socket.send(command);
+            }
+        }
+
     </script>
 </head>
 <body>
@@ -280,6 +418,8 @@ const char webpage[] PROGMEM = R"rawliteral(
                 <td class="yellow-value" id="tgtSpeed" style="text-align: right; width: 60px;">0000</td>
                 <td class="yellow-label" style="text-align: left;">turn:</td>
                 <td class="yellow-value" id="turn" style="text-align: right; width: 60px;">0000</td>
+                <td class="yellow-label" style="text-align: left;">Dir:</td>
+                <td class="yellow-value" id="direction" style="text-align: right; width: 60px;">0000</td>
             </tr>
             <tr class="row-divider">
                 <td class="yellow-label" rowspan="2" style="text-align: left;">Left<br>Motor</td>
@@ -347,17 +487,40 @@ const char webpage[] PROGMEM = R"rawliteral(
             </tr>
         </table>
 
-        <div class="menu">
-            <strong>System Commands:</strong><br>
-            [F]ORWARD &lt;speed&gt; &lt;distance&gt;<br>
-            [B]ACKWARD &lt;speed&gt; &lt;distance&gt;<br>
-            [T]URN &lt;turn&gt; - Set turn 0 - +/-100[%]<br>
-            [S]TOP<br>
-            [P]ID &lt;kp&gt; &lt;ki&gt; &lt;kd&gt; - Enter PID factors<br>
-            <!--            P[O]T &lt;0/1&gt; - Potentiometers speeds control Off / On<br> -->
-            P[I]DON &lt;0/1&gt; - PID regulation Off / On<br>
-            [L]OG &lt;Interval[s]&gt; - Log variables to /log.txt<br>
-            [SIM]MULATION &lt;0/1&gt; - Simulation mode Off / On<br>
+        <div id="menu-container">
+            <div class="menu" id="menu">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <strong>System Commands:</strong>
+                    <button id="toggle-menu" onclick="toggleMenu()">&times;</button>
+                </div>
+                <div id="menu-content">
+                    [F]ORWARD &lt;speed&gt; &lt;distance&gt;<br>
+                    [B]ACKWARD &lt;speed&gt; &lt;distance&gt;<br>
+                    [T]URN &lt;turn&gt; - Set turn 0 - +/-100[%]<br>
+                    [S]TOP<br>
+                    [P]ID &lt;kp&gt; &lt;ki&gt; &lt;kd&gt; - Enter PID factors<br>
+                    P[I]DON &lt;0/1&gt; - PID regulation Off / On<br>
+                    [L]OG &lt;Interval[s]&gt; - Log variables to /log.txt<br>
+                    [SIM]MULATION &lt;0/1&gt; - Simulation mode Off / On<br>
+                </div>
+            </div>
+        </div>
+
+        <div id="sliders">
+            <div>
+                <label for="targetSpeed-slider">Speed: <span id="targetSpeed-value">0</span></label>
+                <input type="range" id="targetSpeed-slider" min="0" max="100" value="0" oninput="updateTargetSpeed(this.value)">
+            </div>
+            <div>
+                <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
+                <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
+            </div>
+        </div>
+
+        <div id="control-buttons">
+            <button onclick="sendControlCommand('BACKWARD')">BACKWARD</button>
+            <button onclick="sendControlCommand('STOP')">STOP</button>
+            <button onclick="sendControlCommand('FORWARD')">FORWARD</button>
         </div>
         <div id="command-container">
             <div id="command-input-group">

@@ -1,11 +1,11 @@
 ﻿//Works on board WEMOS D1 R32 and ESP32 DEV MODULE
-#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_241231"
+#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250112"
 //#define PULSE_COUNT_VS_WIDTH_METHOD //Chose motors speed meters method comment / uncomment appriopriate
 #include <Arduino.h>
 #include <Preferences.h>  //For Non Volatile Memory to store preferences.
 #include"OutputHandler.h"
 OutputHandler output;
-#define OLED
+#define ENABLE_OLED
 #define ENABLE_OTA
 #define ENABLE_FTP
 //#define ENABLE_SPIFFS
@@ -18,7 +18,9 @@ OutputHandler output;
 #define WEBSOCKETS_PORT 83
 //#define NETWORK_SERVICES_CORE 1 //By default service runs on core 0
 //#define FASTNET_SERVICE_CORE 1  //By default service runs on core 0
-#if defined OLED
+#define COMMUNICATION_TASK_CORE 0  //Default Communication task core is 1
+//#define MOTOR_CONTROL_TASK_CORE 0  //Default Motor Control task core is 1
+#ifdef ENABLE_OLED
 #define OLED_RESET -1
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -426,10 +428,10 @@ void MotorControlTask(void* pvParameters) {
 
 		// Set motor speeds
 		if (stopped) { //set zero voltage to both motors
-			digitalWrite(rightMotorDIR, FORWARD);
-			digitalWrite(leftMotorDIR, FORWARD);
-			leftMotorPwm = 0;
-			rightMotorPwm = 0;
+			//digitalWrite(rightMotorDIR, FORWARD);
+			//digitalWrite(leftMotorDIR, FORWARD);
+			(leftMotorDirection == FORWARD) ? leftMotorPwm = 0 : leftMotorPwm = 255;
+			(rightMotorDirection == FORWARD) ? rightMotorPwm = 0 : rightMotorPwm = 255;
 		}
 		ledcWrite(leftMotorPWM, leftMotorPwm);
 		ledcWrite(rightMotorPWM, rightMotorPwm);
@@ -544,7 +546,7 @@ void processTelnet() {
 			processWebsockets();
 			websocketsUpdateDynamicValues(); //Send variables to webpage using websockets stream protocol
 #endif
-#if defined OLED
+#if defined ENABLE_OLED
 			display.clearDisplay();
 			display.setFont(&Picopixel);
 			display.setTextSize(1);
@@ -945,7 +947,7 @@ void processTelnet() {
 	//****************************SETUP***********************************************************//
 	void setup() {
 		Serial.begin(115200);
-#if defined OLED
+#if defined ENABLE_OLED
 		display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
 		display.clearDisplay();
 		display.setFont(&Picopixel);
@@ -1005,7 +1007,10 @@ void processTelnet() {
 		ledcAttachChannel(rightMotorPWM, pwmFreq, pwmResolution, 1);  // Right Motor PWM: Channel 1
 
 		// Creating FreeRTOS task to control dc motors speed
-		xTaskCreate(
+#ifndef MOTOR_CONTROL_TASK_CORE
+#define MOTOR_CONTROL_TASK_CORE 1
+#endif
+		xTaskCreatePinnedToCore(
 			MotorControlTask,        // Task function
 			"Motor Control",         // Task name
 			8192,                    // Stock assigned for task in words - 4 bytes for 32 bits processors
@@ -1013,12 +1018,17 @@ void processTelnet() {
 			//2048,                    // Stock assigned for task in words - 4 bytes for 32 bits processors
 			NULL,                    // Task parameters
 			2,                       // Task priority
-			//    NULL               // Task Handle
-			&MotorControlTaskHandle  // Task Handle
+			//    NULL,               // Task Handle
+			&MotorControlTaskHandle,  // Task Handle
+			MOTOR_CONTROL_TASK_CORE
 		);
 
 		// Creating FreeRTOS task for telnet communication
-		xTaskCreate(
+#ifndef COMMUNICATION_TASK_CORE 
+#define COMMUNICATION_TASK_CORE 1
+#endif
+
+		xTaskCreatePinnedToCore(
 			CommunicationTask,  // Task function
 			"Communication",   // Task name
 			8192,              // Stock assigned for task in words - 4 bytes for 32 bits processors
@@ -1027,7 +1037,8 @@ void processTelnet() {
 			NULL,              // Task parameters
 			1,                 // Task priority
 			//    NULL                 // Task Handle
-			&CommunicationTaskHandle  // Task Handle
+			&CommunicationTaskHandle,  // Task Handle
+			COMMUNICATION_TASK_CORE
 		);
 
 #ifdef ENABLE_WEBSERVER
