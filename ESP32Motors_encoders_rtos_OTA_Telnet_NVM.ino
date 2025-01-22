@@ -1,4 +1,6 @@
 ﻿//Works on board WEMOS D1 R32 and ESP32 DEV MODULE
+//Install library ESP32_Network_Services from //https://github.com/aimeiz/ESP32_Network_Services.git
+
 #define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250112"
 //#define PULSE_COUNT_VS_WIDTH_METHOD //Chose motors speed meters method comment / uncomment appriopriate
 #include <Arduino.h>
@@ -39,8 +41,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 //const char* wifiPassword PROGMEM = MYPASSWORD;
 //const char* ftpUser PROGMEM = FTPUSER;
 //const char* ftpPassword PROGMEM = FTPPASSWORD;
-#include<ESP32_Network_Services.h>
-
+//Library for network services like OTA, FTP, SPIFFS, NTP etc. use #define ENABLE_OTA, ENABLE_FTP, ENABLE_SPIFFS, ENABLE_NTP to incorporate services to your code.
+#include<ESP32_Network_Services.h> //https://github.com/aimeiz/ESP32_Network_Services.git
 uint32_t entry;
 //*********************
 // Pin definitions

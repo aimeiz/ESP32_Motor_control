@@ -214,7 +214,7 @@ const char webpage[] PROGMEM = R"rawliteral(
             justify-content: space-between;
             margin: 1px 0;
             padding: 1px;
-            /*        border: 1px solid #00ff00; */
+    /*        border: 1px solid #00ff00; */
             background-color: #121212;
             color: #00ff00;
         }
@@ -245,51 +245,19 @@ const char webpage[] PROGMEM = R"rawliteral(
                     color: #121212;
                 }
 
-        #steering-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 10px 0;
-        }
-
-        #steering-wheel {
-            width: 150px;
-            height: 150px;
-            background: radial-gradient(circle, #555 70%, #333 90%);
-            border: 5px solid #00ff00;
-            border-radius: 50%;
-            touch-action: none;
-            transform: rotate(0deg);
-            position: relative;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            cursor: grab;
-        }
-
-        #steering-angle {
-            margin-top: 10px;
-            font-size: 16px;
-            color: #00ff00;
-        }
     </style>
     <script>
         let socket;
-        let wsAddress;
-        let websocketPort;
         async function initializeWebSocket() {
             try {
                 // Fetch the WebSocket port from the server
                 const response = await fetch('/getWebSocketPort');
-                websocketPort = await response.text();
+                const websocketPort = await response.text();
                 // Construct the WebSocket address
-                wsAddress = "ws://" + window.location.hostname + ":" + websocketPort + "/ws";
-                console.log("Websockets address and port taken automatically from the server")
-            } catch (error) {
-                console.error("Unable to get websockets port# from server. Using ws://192.168.1.82:83/ws", error)
+                const wsAddress = "ws://" + window.location.hostname + ":" + websocketPort + "/ws";
                 //This is just to test page directly from browser
-                wsAddress = "ws://192.168.1.82:83/ws";
-                websocketPort = "83";
-            }
-            try {
+                ////const wsAddress = "ws://192.168.1.57:83/ws";
+                ////const websocketPort = "83";
                 socket = new WebSocket(wsAddress);
 
                 // Attach event listeners to the WebSocket
@@ -406,7 +374,7 @@ const char webpage[] PROGMEM = R"rawliteral(
         function updateTargetSpeed(value) {
             document.getElementById("targetSpeed-value").innerText = value; // Aktualizujemy wyœwietlan¹ wartoœæ
             const command = `SPEED ${value}`;
-            sendCommand(command, false);
+            sendCommand(command, false); 
         }
 
         // Obs³uga suwaka turn
@@ -434,52 +402,6 @@ const char webpage[] PROGMEM = R"rawliteral(
                 socket.send(command);
             }
         }
-        const steeringWheel = document.getElementById("steering-wheel");
-        const steeringAngleDisplay = document.getElementById("steering-angle");
-
-        let isDragging = false;
-        let currentAngle = 0;
-        let startAngle = 0;
-
-        function getAngle(x, y, centerX, centerY) {
-            return Math.atan2(y - centerY, x - centerX) * (180 / Math.PI);
-        }
-
-        steeringWheel.addEventListener("pointerdown", (event) => {
-            isDragging = true;
-            const rect = steeringWheel.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
-            startAngle = getAngle(event.clientX, event.clientY, centerX, centerY) - currentAngle;
-        });
-
-        window.addEventListener("pointermove", (event) => {
-            if (!isDragging) return;
-
-            const rect = steeringWheel.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-
-            const angle = getAngle(event.clientX, event.clientY, centerX, centerY) - startAngle;
-            currentAngle = angle;
-
-            // Aktualizuj obrót kierownicy
-            steeringWheel.style.transform = `rotate(${currentAngle}deg)`;
-
-            // Ograniczenie k¹ta obrotu (opcjonalne)
-            const constrainedAngle = Math.max(-100, Math.min(100, Math.round(currentAngle)));
-            steeringAngleDisplay.innerText = `${constrainedAngle}°`;
-
-            // Wysy³anie komendy do serwera
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                socket.send(`TURN ${constrainedAngle}`);
-            }
-        });
-
-        window.addEventListener("pointerup", () => {
-            isDragging = false;
-        });
 
     </script>
 </head>
@@ -586,16 +508,10 @@ const char webpage[] PROGMEM = R"rawliteral(
                 <label for="targetSpeed-slider">Speed: <span id="targetSpeed-value">0</span></label>
                 <input type="range" id="targetSpeed-slider" min="0" max="100" value="0" oninput="updateTargetSpeed(this.value)">
             </div>
-            <!--             <div>
-                            <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
-                            <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
-                        </div>
-             -->
-            <div id="steering-container">
-                <div id="steering-wheel"></div>
-                <span id="steering-angle">0°</span>
+            <div>
+                <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
+                <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
             </div>
-
         </div>
 
         <div id="control-buttons">
