@@ -22,7 +22,7 @@ void websocketsUpdateDynamicValues() {
     ordersResponse = "";
         // Left Motor values
     json += "\"targetSpeed\":" + String(targetSpeed) + ",";
-    json += "\"direction\":" + String(direction) + ",";
+    json += "\"direction\":\"" + String(direction == FORWARD ? "FWD" : "REV") + "\",";
     json += "\"turn\":" + String(turn) + ",";
     json += "\"stopped\":" + String(stopped) + ",";
     json += "\"targetLeftSpeed\":" + String(targetLeftSpeed) + ",";

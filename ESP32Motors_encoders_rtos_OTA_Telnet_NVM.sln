@@ -6,16 +6,16 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ESP32Motors_encoders_rtos_O
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|ARM = Debug|ARM
-		Release|ARM = Release|ARM
+		Debug|ESP32 = Debug|ESP32
+		Release|ESP32 = Release|ESP32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ARM.ActiveCfg = Debug|ARM
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ARM.Build.0 = Debug|ARM
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ARM.Deploy.0 = Debug|ARM
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.ActiveCfg = Release|ARM
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.Build.0 = Release|ARM
-		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ARM.Deploy.0 = Release|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ESP32.ActiveCfg = Debug|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ESP32.Build.0 = Debug|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Debug|ESP32.Deploy.0 = Debug|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ESP32.ActiveCfg = Release|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ESP32.Build.0 = Release|ARM
+		{C5F80730-F44F-4478-BDAE-6634EFC2CA88}.Release|ESP32.Deploy.0 = Release|ARM
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

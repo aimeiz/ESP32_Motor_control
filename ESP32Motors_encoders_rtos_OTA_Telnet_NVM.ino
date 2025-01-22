@@ -1,8 +1,9 @@
 ﻿//Works on board WEMOS D1 R32 and ESP32 DEV MODULE
 //Install library ESP32_Network_Services from //https://github.com/aimeiz/ESP32_Network_Services.git
 
-#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250112"
+#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250122"
 //#define PULSE_COUNT_VS_WIDTH_METHOD //Chose motors speed meters method comment / uncomment appriopriate
+//#define ESP32CAM
 #include <Arduino.h>
 #include <Preferences.h>  //For Non Volatile Memory to store preferences.
 #include"OutputHandler.h"
@@ -47,11 +48,41 @@ uint32_t entry;
 //*********************
 // Pin definitions
 //Jtag pins 12 13 14 15
+#ifdef ESP32CAM //AI Thinker
+//GPIO 16 cannot be used since it is CS for PSRAM
+//I2C SCL 1		(TX)  
+//I2C SDA 3		2(RX)
+//const int scl = 1;
+//const int sda = 3; //2;
+//const int leftMotorPWM = 12;			// GPIO for Left Motor PWM
+//const int rightMotorPWM = 13;			// GPIO for Right Motor PWM
+//const int leftMotorDIR = 2;				// GPIO for Left Motor DIR
+//const int rightMotorDIR = 0;			// GPIO for Right Motor DIR
+//const int leftEncoder = 14;				// GPIO for Left Encoder
+//const int rightEncoder = 15;			// GPIO for Right Encoder
+//const int batteryPin = 3;// 16;			//ADC Port for battery voltage measurement shred with (RX)
+//const int flashLed = 4;					//Flash LED hardwired at ESP32CAM
+#include <PCF8574.h>
+PCF8574 pcf8574(0x20); //Default address 0x20
+//1-TXD, 3- RXD UART
+const int sda PROGMEM = 0;
+const int scl PROGMEM = 2;
+const int leftMotorPWM PROGMEM = 12;			// GPIO for Left Motor PWM
+const int rightMotorPWM PROGMEM = 13;			// GPIO for Right Motor PWM
+const int leftEncoder PROGMEM = 14;				// GPIO INT for Left Encoder
+const int rightEncoder PROGMEM = 15;			// GPIO INT for Right Encoder
+const int batteryPin = 3;// 16;			//ADC Port for battery voltage measurement shred with (RX)
+const int flashLed = 4;					//Flash LED hardwired at ESP32CAM
+//Expender I2C PCF8754
+const int leftMotorDIR PROGMEM = 0;			// GPIO for Left Motor DIR
+const int rightMotorDIR PROGMEM = 1;			// GPIO for Right Motor DIR
+
+#else
 //I2C SCL 22  
 //I2C SDA 21
 const int leftMotorPWM PROGMEM = 26;				// GPIO for Left Motor PWM
 const int rightMotorPWM PROGMEM = 33;				// GPIO for Right Motor PWM
-const int leftMotorDIR PROGMEM = 2;					// GPIO for Left Motor DIR
+const int leftMotorDIR PROGMEM = 4;					// GPIO for Left Motor DIR
 const int rightMotorDIR PROGMEM = 27;				// GPIO for Right Motor DIR
 const int leftPot PROGMEM = 34;						// GPIO for Left Potentiometer
 const int rightPot PROGMEM = 35;					// GPIO for Right Potentiometer
@@ -59,6 +90,8 @@ const int leftEncoder PROGMEM = 32;					// GPIO for Left Encoder
 const int rightEncoder PROGMEM = 25;				// GPIO for Right Encoder
 const int equalSpeed PROGMEM = 19;					// GPIO for right speed = left speed adjusted by left speed potentiometer
 const int batteryPin PROGMEM = 36;					//ADC Port for battery voltage measurement
+const int flashLed = 2;								//Flash LED
+#endif
 const float batteryDivider PROGMEM = 0.00371;		//Resistor divider for battery measurements
 const float batteryNorm PROGMEM = 7.6;				//Nominal battery voltage 7.6V - 2s packet
 //const float batteryNorm PROGMEM = 11.4;				//Nominal battery voltage 7.6V - 3s packet
@@ -104,7 +137,8 @@ long currentRightWay;
 const uint32_t minPulse PROGMEM = 8000ul; // 5000ul;        //Minimal accepted pulse lebgth or minimal time between interrupts in uS
 const uint32_t maxPulse PROGMEM = 200000ul;	   //Maximal zccepted pulse length in uS
 // LEDC configuration
-const int pwmFreq PROGMEM = 5000;    // PWM frequency in Hz
+const int motorsPwmFreq PROGMEM = 5000;    //  Motors PWM frequency in Hz
+const int ledPwmFreq PROGMEM = 20000;    //  Led PWM channel
 const int pwmResolution PROGMEM = 8;  // 8-bit resolution (0-255)
 const int pwmMin PROGMEM = 75; //Minimal pwm value during run
 const int pwmMax PROGMEM = 255; //Minimal pwm value during run
@@ -392,7 +426,7 @@ void MotorControlTask(void* pvParameters) {
 		simulation(simulationEnable); //If enabled overrides speed and battery measurements by random values
 
 		if (batteryVoltage < batteryMin) stopRobot();              // Stop robot if voltage is to low.
-
+#ifndef ESP32CAM
 		// Read potentiometer values (0-4095 for 12-bit ADC)
 		int leftPotValue = analogRead(leftPot);
 		int rightPotValue = analogRead(rightPot);
@@ -403,6 +437,7 @@ void MotorControlTask(void* pvParameters) {
 			targetRightSpeed = map(rightPotValue, 0, 4095, 0, 1000); //1000 pulses per second is maximum
 			if (digitalRead(equalSpeed) == LOW) targetRightSpeed = targetLeftSpeed; //Both motors run targetLeftSpeed if jumper is set
 		}
+#endif
 		targetLeftSpeedCorrected = targetLeftSpeed;
 		targetRightSpeedCorrected = targetRightSpeed;
 		if (PIDon) {
@@ -410,10 +445,15 @@ void MotorControlTask(void* pvParameters) {
 			targetLeftSpeedCorrected = stabilizeSpeed(targetLeftSpeed, speedLeft, &errorLeft, &integralLeft, &previousErrorLeft, &derivativeLeft);
 			targetRightSpeedCorrected = stabilizeSpeed(targetRightSpeed, speedRight, &errorRight, &integralRight, &previousErrorRight, &derivativeRight);
 		}
+#ifdef ESP32CAM
+		//Write directions to direction ports via expander PCF8754
+		pcf8574.write(leftMotorDIR, leftMotorDirection);
+		pcf8574.write(rightMotorDIR, rightMotorDirection);
+#else
 		//Write directions to direction ports
 		digitalWrite(rightMotorDIR, rightMotorDirection);
 		digitalWrite(leftMotorDIR, leftMotorDirection);
-
+#endif
 		// Map target speeds values to motor speeds (0-255 or 255 - 0 for 8-bit PWM)
 		if (leftMotorDirection == FORWARD)
 			//leftMotorPwm = map(targetLeftSpeedCorrected, 0, maxSpeed, 0, 255);
@@ -659,24 +699,40 @@ void processTelnet() {
 		targetLeftSpeed = 0;
 		targetRightSpeed = 0;
 		if (leftMotorDirection == FORWARD) {
+#ifdef ESP32CAM
+			pcf8574.write(leftMotorDIR, FORWARD);
+#else
 			digitalWrite(leftMotorDIR, FORWARD);
+#endif
 			leftMotorPwm = 0;
 			ledcWrite(leftMotorPWM, 0);
 		}
 		else if (leftMotorDirection == BACKWARD)
 		{
+#ifdef ESP32CAM
+			pcf8574.write(leftMotorDIR, BACKWARD);
+#else
 			digitalWrite(leftMotorDIR, BACKWARD);
+#endif
 			leftMotorPwm = 0;
 			ledcWrite(leftMotorPWM, 255);
 		}
 		if (rightMotorDirection == FORWARD) {
+#ifdef ESP32CAM
+			pcf8574.write(rightMotorDIR, FORWARD);
+#else
 			digitalWrite(rightMotorDIR, FORWARD);
+#endif
 			rightMotorPwm = 0;
 			ledcWrite(rightMotorPWM, 0);
 		}
 		else if (rightMotorDirection == BACKWARD)
 		{
+#ifdef ESP32CAM
+			pcf8574.write(rightMotorDIR, BACKWARD);
+#else
 			digitalWrite(rightMotorDIR, BACKWARD);
+#endif
 			rightMotorPwm = 0;
 			ledcWrite(rightMotorPWM, 255);
 		}
@@ -704,6 +760,12 @@ void processTelnet() {
 		Serial.print(F("[L]OG <sec> - Loging for sec seconds 1 - 30 to /log.txt\r\n"));
 #endif
 	}
+
+	void led(uint8_t light = 0) {
+
+		ledcWrite(flashLed, light);
+	}
+
 	//Function processing commands received from telnet terminal
 	//Struct struct CommandData cmdData;
 	String orders(struct CommandData cmdData) {
@@ -910,6 +972,20 @@ void processTelnet() {
 				output.print(F("Invald parameters for LOG command\r\n"));
 			}
 		}
+		else if (cmdData.command == "LED" || cmdData.command == "LE") {
+			if (cmdData.argCount == 1) {
+				led((uint8_t)cmdData.arguments[0]);
+				(cmdData.arguments[0]==0) ? output.printf(F("Flash LED light Off")) : output.printf(F("Flash LED light set to: %d\r\n"),(uint8_t)cmdData.arguments[0]);
+
+			}
+			else if (cmdData.argCount == 0) {
+				led();
+				output.print(F("Flash LED light Off\r\n"));
+			}
+			else {
+				output.print(F("Invald parameters for LED command\r\n"));
+			}
+			}
 		else {
 			output.print(F("Unknown command \r\n"));
 		}
@@ -948,8 +1024,22 @@ void processTelnet() {
 
 	//****************************SETUP***********************************************************//
 	void setup() {
+
+#ifdef ESP32CAM
+		Serial.begin(115200, SERIAL_8N1, -1, 1); // TX active, RX inactive
+		Wire.begin(sda,scl);
+		// Inicjalizacja PCF8574
+		pcf8574.begin();
+
+		// Setting all PCF8574 LOW
+		for (int i = 0; i < 8; i++) {
+			pcf8574.write(i, LOW);
+		}
+#else
 		Serial.begin(115200);
-#if defined ENABLE_OLED
+#endif
+
+#ifdef ENABLE_OLED
 		display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
 		display.clearDisplay();
 		display.setFont(&Picopixel);
@@ -970,22 +1060,22 @@ void processTelnet() {
 		}
 		startNetworkServices();
 		//configure motors pins outputs
-		pinMode(leftMotorDIR, OUTPUT);
-		pinMode(rightMotorDIR, OUTPUT);
 		pinMode(leftMotorPWM, OUTPUT);
 		pinMode(rightMotorPWM, OUTPUT);
 		digitalWrite(leftMotorPWM, LOW);
 		digitalWrite(rightMotorPWM, LOW);
+#ifndef ESP32CAM
+		pinMode(leftMotorDIR, OUTPUT);
+		pinMode(rightMotorDIR, OUTPUT);
 		digitalWrite(leftMotorDIR, LOW);
 		digitalWrite(rightMotorDIR, LOW);
-
 
 		// Configure potentiometers as inputs
 		pinMode(leftPot, INPUT);
 		pinMode(rightPot, INPUT);
-
 		//Configure eqyalSpeed jumper as input
 		pinMode(equalSpeed, INPUT_PULLUP);
+#endif
 
 		// Configure encoders
 		pinMode(leftEncoder, INPUT_PULLUP);
@@ -1005,8 +1095,9 @@ void processTelnet() {
 		pinMode(batteryPin, INPUT);
 
 		// Configure PWM channels in one step
-		ledcAttachChannel(leftMotorPWM, pwmFreq, pwmResolution, 0);   // Left Motor PWM: Channel 0
-		ledcAttachChannel(rightMotorPWM, pwmFreq, pwmResolution, 1);  // Right Motor PWM: Channel 1
+		ledcAttachChannel(leftMotorPWM, motorsPwmFreq, pwmResolution, 0);   // Left Motor PWM: Channel 0
+		ledcAttachChannel(rightMotorPWM, motorsPwmFreq, pwmResolution, 1);  // Right Motor PWM: Channel 1
+		ledcAttachChannel(flashLed, ledPwmFreq, pwmResolution, 2);  // Flash LED PWM: Channel 2
 
 		// Creating FreeRTOS task to control dc motors speed
 #ifndef MOTOR_CONTROL_TASK_CORE

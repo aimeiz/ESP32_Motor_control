@@ -286,8 +286,9 @@ const char webpage[] PROGMEM = R"rawliteral(
             } catch (error) {
                 console.error("Unable to get websockets port# from server. Using ws://192.168.1.82:83/ws", error)
                 //This is just to test page directly from browser
-                wsAddress = "ws://192.168.1.82:83/ws";
+                wsAddress = "ws://192.168.1.80:83/ws";
                 websocketPort = "83";
+                throw new Error("B³¹d w pierwszym catch"); // Nowy b³¹d
             }
             try {
                 socket = new WebSocket(wsAddress);
@@ -333,19 +334,19 @@ const char webpage[] PROGMEM = R"rawliteral(
 
             //document.getElementById('ordersResponse').innerText = data.ordersResponse;
             document.getElementById('tgtSpeed').innerText = data.targetSpeed;
-            document.getElementById('direction').innerText = data.direction === 0 ? "FWD" : "BCK";
+            document.getElementById('direction').innerText = data.direction;
             document.getElementById('turn').innerText = data.turn;
             //document.getElementById('stopped').innerText = data.stopped;
             document.getElementById('tgtLeftSpeed').innerText = data.targetLeftSpeed;
             document.getElementById('leftSpeed').innerText = data.speedLeft;
             document.getElementById('leftPwm').innerText = data.leftMotorPwm;
-            document.getElementById('leftDir').innerText = data.leftMotorDirection === "FWD" ? "FWD" : "BCK";
+            document.getElementById('leftDir').innerText = data.leftMotorDirection;
             document.getElementById('leftWay').innerText = data.leftWay;
 
             document.getElementById('tgtRightSpeed').innerText = data.targetRightSpeed;
             document.getElementById('rightSpeed').innerText = data.speedRight;
             document.getElementById('rightPwm').innerText = data.rightMotorPwm;
-            document.getElementById('rightDir').innerText = data.rightMotorDirection === "FWD" ? "FWD" : "BCK";
+            document.getElementById('rightDir').innerText = data.rightMotorDirection;
             document.getElementById('rightWay').innerText = data.rightWay;
 
             document.getElementById('PID').innerText = data.PID === "ON" ? "ON" : "OFF";
@@ -577,6 +578,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                     P[I]DON &lt;0/1&gt; - PID regulation Off / On<br>
                     [L]OG &lt;Interval[s]&gt; - Log variables to /log.txt<br>
                     [SIM]MULATION &lt;0/1&gt; - Simulation mode Off / On<br>
+                    [LE]D &lt;0-255&gt; - Flash LED Off / Power<br>
                 </div>
             </div>
         </div>
@@ -586,15 +588,15 @@ const char webpage[] PROGMEM = R"rawliteral(
                 <label for="targetSpeed-slider">Speed: <span id="targetSpeed-value">0</span></label>
                 <input type="range" id="targetSpeed-slider" min="0" max="100" value="0" oninput="updateTargetSpeed(this.value)">
             </div>
-            <!--             <div>
+                         <div>
                             <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
                             <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
                         </div>
-             -->
-            <div id="steering-container">
+             
+            <!--<div id="steering-container">
                 <div id="steering-wheel"></div>
                 <span id="steering-angle">0°</span>
-            </div>
+            </div>-->
 
         </div>
 
