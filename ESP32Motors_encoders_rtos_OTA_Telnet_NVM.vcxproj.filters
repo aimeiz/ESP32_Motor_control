@@ -30,6 +30,9 @@
     <ClInclude Include="OutputHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ESP32Motors_encoders_rtos_OTA_Telnet_NVM.ino" />
@@ -37,6 +40,7 @@
   <ItemGroup>
     <None Include="webPage.html" />
     <None Include="webPage — browser.html" />
+    <None Include="webPageCam.html" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="board.txt" />

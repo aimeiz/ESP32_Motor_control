@@ -286,7 +286,7 @@ const char webpage[] PROGMEM = R"rawliteral(
             } catch (error) {
                 console.error("Unable to get websockets port# from server. Using ws://192.168.1.82:83/ws", error)
                 //This is just to test page directly from browser
-                wsAddress = "ws://192.168.1.80:83/ws";
+                wsAddress = "ws://192.168.1.83:83/ws";
                 websocketPort = "83";
             }
             try {
@@ -294,12 +294,28 @@ const char webpage[] PROGMEM = R"rawliteral(
 
                 // Attach event listeners to the WebSocket
                 socket.onopen = () => console.log("WebSocket connected to port " + websocketPort);
+
+                //socket.onmessage = (event) => {
+                //    console.log("Message received:", event.data);
+                //    // Handle incoming WebSocket messages here
+                //    const data = JSON.parse(event.data);
+                //    updateTable(data);
+                //};
+
                 socket.onmessage = (event) => {
-                    console.log("Message received:", event.data);
-                    // Handle incoming WebSocket messages here
-                    const data = JSON.parse(event.data);
-                    updateTable(data);
+                    if (event.data instanceof Blob) {
+                        const blob = new Blob([event.data], { type: "image/jpeg" });
+                        const url = URL.createObjectURL(blob);
+                        document.getElementById("camera-stream").src = url;
+                        hideMenu();
+                    }
+                    else {
+                        console.log("Received variable data:", event.data);
+                        const data = JSON.parse(event.data);
+                        updateTable(data);
+                    }
                 };
+
                 socket.onclose = () => console.log("WebSocket disconnected");
                 socket.onerror = (error) => console.error("WebSocket error:", error);
             } catch (error) {
@@ -329,6 +345,12 @@ const char webpage[] PROGMEM = R"rawliteral(
                     ordersResponseElement.innerText = ""; // Clear after 3 sec
                     ordersResponseTimeout = null; // Timer reset after completion
                 }, 3000);
+            
+                if (data.ordersResponse.trim() === "Video stream Off") {
+                    //    const video = document.getElementById("camera-stream");
+                    //    video.style.display = "none";
+                    location.reload();
+                }
             }
 
             //document.getElementById('ordersResponse').innerText = data.ordersResponse;
@@ -392,6 +414,22 @@ const char webpage[] PROGMEM = R"rawliteral(
             const isHidden = menuContent.style.display === "none";
 
             if (isHidden) {
+                menuContent.style.display = "block";
+                menuContent.style.opacity = "1";
+            } else {
+                menuContent.style.opacity = "0";
+                setTimeout(() => {
+                    menuContent.style.display = "none";
+                }, 300); // Po 300ms, gdy efekt wygaszenia siê zakoñczy
+            }
+        }
+
+        function hideMenu() {
+            const menuContent = document.getElementById("menu-content");
+            const isHidden = menuContent.style.display === "none";
+
+            if (isHidden) {
+                return;
                 menuContent.style.display = "block";
                 menuContent.style.opacity = "1";
             } else {
@@ -480,6 +518,21 @@ const char webpage[] PROGMEM = R"rawliteral(
         window.addEventListener("pointerup", () => {
             isDragging = false;
         });
+
+        //socket.onmessage = (event) => {
+        //    if (event.data instanceof Blob) {
+        //        const blob = new Blob([event.data], { type: "image/jpeg" });
+        //        const url = URL.createObjectURL(blob);
+        //        document.getElementById("camera-stream").src = url;
+        //    } else {
+        //        const data = JSON.parse(event.data);
+        //        console.log("Received variable data:", data);
+        //    }
+        //};
+
+        function requestPhoto() {
+            socket.send("VIDEO");
+        }
 
     </script>
 </head>
@@ -578,6 +631,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                     [L]OG &lt;Interval[s]&gt; - Log variables to /log.txt<br>
                     [SIM]MULATION &lt;0/1&gt; - Simulation mode Off / On<br>
                     [LE]D &lt;0-255&gt; - Flash LED Off / Power<br>
+                    [V]IDEO &lt;0-Video ON&gt;() - Video OFF&gt;>0 Num of photos<br>
                 </div>
             </div>
         </div>
@@ -587,11 +641,11 @@ const char webpage[] PROGMEM = R"rawliteral(
                 <label for="targetSpeed-slider">Speed: <span id="targetSpeed-value">0</span></label>
                 <input type="range" id="targetSpeed-slider" min="0" max="100" value="0" oninput="updateTargetSpeed(this.value)">
             </div>
-                         <div>
-                            <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
-                            <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
-                        </div>
-             
+            <div>
+                <label for="turn-slider">Turn: <span id="turn-value">0</span></label>
+                <input type="range" id="turn-slider" min="-100" max="100" value="0" oninput="updateTurn(this.value)">
+            </div>
+
             <!--<div id="steering-container">
                 <div id="steering-wheel"></div>
                 <span id="steering-angle">0°</span>
@@ -613,6 +667,7 @@ const char webpage[] PROGMEM = R"rawliteral(
                 <p id="ordersResponse"></p>
             </div>
         </div>
+        <img id="camera-stream" style="width: 100%;">
         <p class="version" id="otaHostname">-</p>
     </div>
 </body>

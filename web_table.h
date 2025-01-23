@@ -1,6 +1,9 @@
 #pragma once
-
+#ifdef ESP32CAM
+#include "webPageCam.html"
+#else
 #include"WebPage.html"
+#endif
 extern String ordersResponse;
 void websocketsUpdateDynamicValues() {
     // Create a JSON string to represent the data

@@ -1,18 +1,18 @@
 ﻿//Works on board WEMOS D1 R32 and ESP32 DEV MODULE
 //Install library ESP32_Network_Services from //https://github.com/aimeiz/ESP32_Network_Services.git
 
-#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250122"
+#define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250124"
 //#define PULSE_COUNT_VS_WIDTH_METHOD //Chose motors speed meters method comment / uncomment appriopriate
-//#define ESP32CAM
+#define ESP32CAM
 #include <Arduino.h>
 #include <Preferences.h>  //For Non Volatile Memory to store preferences.
 #include"OutputHandler.h"
 OutputHandler output;
-#define ENABLE_OLED
+//#define ENABLE_OLED
 #define ENABLE_OTA
 #define ENABLE_FTP
-//#define ENABLE_SPIFFS
-//#define ENABLE_NTP
+#define ENABLE_SPIFFS
+#define ENABLE_NTP
 #define GMTOFFSET_SEC 3600 				//Default UTC time
 #define DAYLIGHTOFFSET_SEC 3600 	//Default summer time offset 1 hour
 //#define ENABLE_TELNETSTREAM
@@ -21,7 +21,7 @@ OutputHandler output;
 #define WEBSOCKETS_PORT 83
 //#define NETWORK_SERVICES_CORE 1 //By default service runs on core 0
 //#define FASTNET_SERVICE_CORE 1  //By default service runs on core 0
-#define COMMUNICATION_TASK_CORE 0  //Default Communication task core is 1
+//#define COMMUNICATION_TASK_CORE 0  //Default Communication task core is 1
 //#define MOTOR_CONTROL_TASK_CORE 0  //Default Motor Control task core is 1
 #ifdef ENABLE_OLED
 #define OLED_RESET -1
@@ -49,6 +49,8 @@ uint32_t entry;
 // Pin definitions
 //Jtag pins 12 13 14 15
 #ifdef ESP32CAM //AI Thinker
+#include"Camera.h"
+bool sendPhotos = false; // if troe sends video stream over websocket
 //GPIO 16 cannot be used since it is CS for PSRAM
 //I2C SCL 1		(TX)  
 //I2C SDA 3		2(RX)
@@ -65,13 +67,13 @@ uint32_t entry;
 #include <PCF8574.h>
 PCF8574 pcf8574(0x20); //Default address 0x20
 //1-TXD, 3- RXD UART
-const int sda PROGMEM = 0;
+const int sda PROGMEM = 3;// 0;					//Pins 0 and 16 blocks camera. 16 drives PSRAM
 const int scl PROGMEM = 2;
 const int leftMotorPWM PROGMEM = 12;			// GPIO for Left Motor PWM
 const int rightMotorPWM PROGMEM = 13;			// GPIO for Right Motor PWM
 const int leftEncoder PROGMEM = 14;				// GPIO INT for Left Encoder
 const int rightEncoder PROGMEM = 15;			// GPIO INT for Right Encoder
-const int batteryPin = 3;// 16;			//ADC Port for battery voltage measurement shred with (RX)
+const int batteryPin = 3;// 0; //3;// 16;			//ADC Port for battery voltage measurement shred with (RX)
 const int flashLed = 4;					//Flash LED hardwired at ESP32CAM
 //Expender I2C PCF8754
 const int leftMotorDIR PROGMEM = 0;			// GPIO for Left Motor DIR
@@ -161,7 +163,7 @@ unsigned long lastTime;
 //Minimal speed 30 RPM gives 10 or 20 pulses/s pulse width 50000us or 100000us 
 const int maxSpeed PROGMEM = 110;              // Maximum speed in pulses per second
 
-const unsigned long commPeriod PROGMEM = 500;  //Telnet communication period in miliseconds
+const unsigned long commPeriod PROGMEM = 100;// 33;// 500;  //Network communication period in miliseconds 33 means 30 frames / sec
 bool printToTelnet = false;
 bool printIntervalsToTelnet = false;
 float batteryVoltage = 0;  //Stores battery voltage
@@ -585,8 +587,15 @@ void processTelnet() {
 			updateDynamicValuesTelnetStream();
 #endif
 #ifdef ENABLE_WEBSOCKETS
-			processWebsockets();
-			websocketsUpdateDynamicValues(); //Send variables to webpage using websockets stream protocol
+			if (webSocket.connectedClients()) {
+				processWebsockets();
+				websocketsUpdateDynamicValues(); //Send variables to webpage using websockets stream protocol
+#ifdef ESP32CAM
+				if (sendPhotos) {
+					sendPhotoOverWebSocket(0);
+				}
+#endif
+			}
 #endif
 #if defined ENABLE_OLED
 			display.clearDisplay();
@@ -975,7 +984,7 @@ void processTelnet() {
 		else if (cmdData.command == "LED" || cmdData.command == "LE") {
 			if (cmdData.argCount == 1) {
 				led((uint8_t)cmdData.arguments[0]);
-				(cmdData.arguments[0]==0) ? output.printf(F("Flash LED light Off")) : output.printf(F("Flash LED light set to: %d\r\n"),(uint8_t)cmdData.arguments[0]);
+				(cmdData.arguments[0] == 0) ? output.printf(F("Flash LED light Off")) : output.printf(F("Flash LED light set to: %d\r\n"), (uint8_t)cmdData.arguments[0]);
 
 			}
 			else if (cmdData.argCount == 0) {
@@ -985,7 +994,31 @@ void processTelnet() {
 			else {
 				output.print(F("Invald parameters for LED command\r\n"));
 			}
+		}
+#ifdef ESP32CAM
+		else if (cmdData.command == "VIDEO" || cmdData.command == "V") {
+			if (cmdData.argCount == 1) {
+				discardPhoto();
+				if (cmdData.arguments[0] == 0) {
+					sendPhotos = true;
+					output.printf(F("Viede0 stream ON"));
+				}
+				else {
+					output.printf(F("Sending %d Photos\r\n"), (uint8_t)cmdData.arguments[0]);
+					sendPhotos = false;
+					sendPhotoOverWebSocket((uint8_t)cmdData.arguments[0]);
+				}
 			}
+			else if (cmdData.argCount == 0) {
+				discardPhoto();
+				sendPhotos = false;
+				output.print(F("Video stream Off\r\n"));
+			}
+			else {
+				output.print(F("Invald parameters forPHOTO command\r\n"));
+			}
+		}
+#endif
 		else {
 			output.print(F("Unknown command \r\n"));
 		}
@@ -1021,13 +1054,20 @@ void processTelnet() {
 	//  int correction = speedDelta / 1.5;
 	//  return constrain(targetSpeed + correction, 0, maxSpeed);
 	//}
+#ifdef ESP32CAM
+	//extern void setupCamera();
+	//extern void captureAndSavePhoto();
+	//extern void handleWebSocketMessage(uint8_t* payload, size_t length);
+#endif
 
 	//****************************SETUP***********************************************************//
 	void setup() {
 
 #ifdef ESP32CAM
 		Serial.begin(115200, SERIAL_8N1, -1, 1); // TX active, RX inactive
-		Wire.begin(sda,scl);
+
+
+		Wire.begin(sda, scl);
 		// Inicjalizacja PCF8574
 		pcf8574.begin();
 
@@ -1035,6 +1075,7 @@ void processTelnet() {
 		for (int i = 0; i < 8; i++) {
 			pcf8574.write(i, LOW);
 		}
+
 #else
 		Serial.begin(115200);
 #endif
@@ -1078,28 +1119,33 @@ void processTelnet() {
 #endif
 
 		// Configure encoders
+				//pinMode(leftEncoder, INPUT_PULLDOWN);
+				//pinMode(rightEncoder, INPUT_PULLDOWN);
 		pinMode(leftEncoder, INPUT_PULLUP);
 		pinMode(rightEncoder, INPUT_PULLUP);
-		//pinMode(leftEncoder, INPUT_PULLDOWN);
-		//pinMode(rightEncoder, INPUT_PULLDOWN);
 		lastTime = millis();
 
 		// Attach interrupts for both sensors
-		attachInterrupt(digitalPinToInterrupt(leftEncoder), handleStateChangeMotorLeft, RISING);
-		attachInterrupt(digitalPinToInterrupt(rightEncoder), handleStateChangeMotorRight, RISING);
 		//attachInterrupt(leftEncoder, leftEncoderISR, CHANGE);
 		//attachInterrupt(rightEncoder, rightEncoderISR, CHANGE);
+		attachInterrupt(leftEncoder, handleStateChangeMotorLeft, RISING);
+		attachInterrupt(leftEncoder, handleStateChangeMotorRight, RISING);
 
+#if defined ESP32CAM
+		setupCamera();
+		delay(500);
+#endif
 
 		// Confogure ADC
 		pinMode(batteryPin, INPUT);
 
 		// Configure PWM channels in one step
-		ledcAttachChannel(leftMotorPWM, motorsPwmFreq, pwmResolution, 0);   // Left Motor PWM: Channel 0
-		ledcAttachChannel(rightMotorPWM, motorsPwmFreq, pwmResolution, 1);  // Right Motor PWM: Channel 1
-		ledcAttachChannel(flashLed, ledPwmFreq, pwmResolution, 2);  // Flash LED PWM: Channel 2
+		// Configure PWM channels in one step
+		ledcAttachChannel(leftMotorPWM, motorsPwmFreq, pwmResolution, 1);   // Left Motor PWM: Channel 1
+		ledcAttachChannel(rightMotorPWM, motorsPwmFreq, pwmResolution, 2);  // Right Motor PWM: Channel 2
+		ledcAttachChannel(flashLed, ledPwmFreq, pwmResolution, 3);  // Flash LED PWM: Channel 3
 
-		// Creating FreeRTOS task to control dc motors speed
+				// Creating FreeRTOS task to control dc motors speed
 #ifndef MOTOR_CONTROL_TASK_CORE
 #define MOTOR_CONTROL_TASK_CORE 1
 #endif
@@ -1143,11 +1189,18 @@ void processTelnet() {
 			server.send_P(200, "text/html", webpage); // Serve the HTML directly from PROGMEM
 			});
 #endif
-
 	}  //*****************End of setup**********************************
 
 	//*****************loop*********************************************
 	void loop() {
-		//Nothing here. Everything in Rtos task.
+		//#ifdef ESP32CAM
+		//		sendPhotoOverWebSocket();
+		//#endif
+				//Nothing here. Everything in Rtos task.
+				//Serial.printf("Free heap: %d bytes\n", ESP.getFreeHeap());
+				//Serial.printf("Total PSRAM: %d bytes\n", ESP.getPsramSize());
+				//Serial.printf("Free PSRAM: %d bytes\n", ESP.getFreePsram());
+				//delay(1000);
+				//vTaskDelay(pdMS_TO_TICKS(1000));  //Task delay 1s
 	}
 	//*****************End of loop**************************************
