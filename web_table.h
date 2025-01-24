@@ -1,5 +1,5 @@
 #pragma once
-#ifdef ESP32CAM
+#if defined ESP32CAM || defined ESP32WROVERDEV  
 #include "webPageCam.html"
 #else
 #include"WebPage.html"

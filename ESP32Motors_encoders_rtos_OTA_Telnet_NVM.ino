@@ -3,12 +3,14 @@
 
 #define VERSION "ESP32Motors_encoders_Rtos_OTA_Telnet_NVM_250124"
 //#define PULSE_COUNT_VS_WIDTH_METHOD //Chose motors speed meters method comment / uncomment appriopriate
-#define ESP32CAM
+//#define ESP32CAM
+#define ESP32WROVERDEV //ESP32 Wroover Module Default 4MB with SPIFFS 1.2MB App 1.5MB SPIFFS
 #include <Arduino.h>
 #include <Preferences.h>  //For Non Volatile Memory to store preferences.
 #include"OutputHandler.h"
+//#include <Wire.h>
 OutputHandler output;
-//#define ENABLE_OLED
+#define ENABLE_OLED
 #define ENABLE_OTA
 #define ENABLE_FTP
 #define ENABLE_SPIFFS
@@ -51,19 +53,6 @@ uint32_t entry;
 #ifdef ESP32CAM //AI Thinker
 #include"Camera.h"
 bool sendPhotos = false; // if troe sends video stream over websocket
-//GPIO 16 cannot be used since it is CS for PSRAM
-//I2C SCL 1		(TX)  
-//I2C SDA 3		2(RX)
-//const int scl = 1;
-//const int sda = 3; //2;
-//const int leftMotorPWM = 12;			// GPIO for Left Motor PWM
-//const int rightMotorPWM = 13;			// GPIO for Right Motor PWM
-//const int leftMotorDIR = 2;				// GPIO for Left Motor DIR
-//const int rightMotorDIR = 0;			// GPIO for Right Motor DIR
-//const int leftEncoder = 14;				// GPIO for Left Encoder
-//const int rightEncoder = 15;			// GPIO for Right Encoder
-//const int batteryPin = 3;// 16;			//ADC Port for battery voltage measurement shred with (RX)
-//const int flashLed = 4;					//Flash LED hardwired at ESP32CAM
 #include <PCF8574.h>
 PCF8574 pcf8574(0x20); //Default address 0x20
 //1-TXD, 3- RXD UART
@@ -78,6 +67,25 @@ const int flashLed = 4;					//Flash LED hardwired at ESP32CAM
 //Expender I2C PCF8754
 const int leftMotorDIR PROGMEM = 0;			// GPIO for Left Motor DIR
 const int rightMotorDIR PROGMEM = 1;			// GPIO for Right Motor DIR
+
+#elif defined ESP32WROVERDEV						//WROVER DEV
+#include"Camera.h"
+bool sendPhotos = false; // if troe sends video stream over websocket
+//TXD 1
+// RXD 3
+const int scl PROGMEM = 0;  						// I2C SCL Shared with Boot button
+const int sda PROGMEM = 3;							// I2C SDAShared with UART RX
+const int leftMotorPWM PROGMEM = 32;				// GPIO for Left Motor PWM
+const int rightMotorPWM PROGMEM = 33;				// GPIO for Right Motor PWM
+const int leftMotorDIR PROGMEM = 13;				// GPIO for Left Motor DIR
+const int rightMotorDIR PROGMEM = 14;				// GPIO for Right Motor DIR
+const int leftEncoder PROGMEM = 12;					// GPIO for Left Encoder
+const int rightEncoder PROGMEM = 13;				// GPIO for Right Encoder
+const int batteryPin PROGMEM = 15;					//ADC Port for battery voltage measurement
+const int flashLed PROGMEM = 2;								//Flash LED
+//const int leftPot PROGMEM = ;						// GPIO for Left Potentiometer
+//const int rightPot PROGMEM = ;					// GPIO for Right Potentiometer
+//const int equalSpeed PROGMEM = ;					// GPIO for right speed = left speed adjusted by left speed potentiometer
 
 #else
 //I2C SCL 22  
@@ -428,7 +436,7 @@ void MotorControlTask(void* pvParameters) {
 		simulation(simulationEnable); //If enabled overrides speed and battery measurements by random values
 
 		if (batteryVoltage < batteryMin) stopRobot();              // Stop robot if voltage is to low.
-#ifndef ESP32CAM
+#if !defined(ESP32CAM) && !defined(ESP32WROVERDEV)
 		// Read potentiometer values (0-4095 for 12-bit ADC)
 		int leftPotValue = analogRead(leftPot);
 		int rightPotValue = analogRead(rightPot);
@@ -590,7 +598,7 @@ void processTelnet() {
 			if (webSocket.connectedClients()) {
 				processWebsockets();
 				websocketsUpdateDynamicValues(); //Send variables to webpage using websockets stream protocol
-#ifdef ESP32CAM
+#if defined(ESP32CAM) || defined(ESP32WROVERDEV)
 				if (sendPhotos) {
 					sendPhotoOverWebSocket(0);
 				}
@@ -995,7 +1003,7 @@ void processTelnet() {
 				output.print(F("Invald parameters for LED command\r\n"));
 			}
 		}
-#ifdef ESP32CAM
+#if defined(ESP32CAM) || defined(ESP32WROVERDEV)
 		else if (cmdData.command == "VIDEO" || cmdData.command == "V") {
 			if (cmdData.argCount == 1) {
 				discardPhoto();
@@ -1054,20 +1062,18 @@ void processTelnet() {
 	//  int correction = speedDelta / 1.5;
 	//  return constrain(targetSpeed + correction, 0, maxSpeed);
 	//}
-#ifdef ESP32CAM
-	//extern void setupCamera();
+//#if defined(ESP32CAM) || defined(ESP32WROVERDEV)	//extern void setupCamera();
 	//extern void captureAndSavePhoto();
 	//extern void handleWebSocketMessage(uint8_t* payload, size_t length);
-#endif
+//#endif
 
 	//****************************SETUP***********************************************************//
 	void setup() {
 
-#ifdef ESP32CAM
+#if defined(ESP32CAM) || defined(ESP32WROVERDEV)
 		Serial.begin(115200, SERIAL_8N1, -1, 1); // TX active, RX inactive
-
-
 		Wire.begin(sda, scl);
+#ifdef ESP32CAM
 		// Inicjalizacja PCF8574
 		pcf8574.begin();
 
@@ -1075,7 +1081,7 @@ void processTelnet() {
 		for (int i = 0; i < 8; i++) {
 			pcf8574.write(i, LOW);
 		}
-
+#endif
 #else
 		Serial.begin(115200);
 #endif
@@ -1105,7 +1111,7 @@ void processTelnet() {
 		pinMode(rightMotorPWM, OUTPUT);
 		digitalWrite(leftMotorPWM, LOW);
 		digitalWrite(rightMotorPWM, LOW);
-#ifndef ESP32CAM
+#if !defined(ESP32CAM) && !defined(ESP32WROVERDEV)
 		pinMode(leftMotorDIR, OUTPUT);
 		pinMode(rightMotorDIR, OUTPUT);
 		digitalWrite(leftMotorDIR, LOW);
@@ -1131,7 +1137,7 @@ void processTelnet() {
 		attachInterrupt(leftEncoder, handleStateChangeMotorLeft, RISING);
 		attachInterrupt(leftEncoder, handleStateChangeMotorRight, RISING);
 
-#if defined ESP32CAM
+#if defined(ESP32CAM) || defined(ESP32WROVERDEV)
 		setupCamera();
 		delay(500);
 #endif
@@ -1145,7 +1151,7 @@ void processTelnet() {
 		ledcAttachChannel(rightMotorPWM, motorsPwmFreq, pwmResolution, 2);  // Right Motor PWM: Channel 2
 		ledcAttachChannel(flashLed, ledPwmFreq, pwmResolution, 3);  // Flash LED PWM: Channel 3
 
-				// Creating FreeRTOS task to control dc motors speed
+		// Creating FreeRTOS task to control dc motors speed
 #ifndef MOTOR_CONTROL_TASK_CORE
 #define MOTOR_CONTROL_TASK_CORE 1
 #endif
@@ -1193,7 +1199,7 @@ void processTelnet() {
 
 	//*****************loop*********************************************
 	void loop() {
-		//#ifdef ESP32CAM
+		// #if defined(ESP32CAM) || defined(ESP32WROVERDEV)
 		//		sendPhotoOverWebSocket();
 		//#endif
 				//Nothing here. Everything in Rtos task.
